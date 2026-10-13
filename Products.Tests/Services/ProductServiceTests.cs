@@ -244,6 +244,140 @@ public class ProductServiceTests
             Times.Once);
     }
 
+    [Theory]
+    [InlineData(0, 1, 1, 1)]
+    [InlineData(1, 1, 1, 1)]
+    [InlineData(10, 1, 1, 1)]
+    [InlineData(11, 2, 2, 2)]
+    [InlineData(20, 2, 2, 2)]
+    [InlineData(21, 2, 2, 3)]
+    [InlineData(21, 0, 1, 3)]
+    [InlineData(21, -5, 1, 3)]
+    [InlineData(21, 999, 3, 3)]
+    public async Task GetListAsync_CalculatesPaginationAndPassesFilter(
+        int totalCount,
+        int requestedPage,
+        int expectedPage,
+        int expectedTotalPages)
+    {
+        var products = new Mock<IProductRepository>(MockBehavior.Strict);
+        var categories = new Mock<ICategoryRepository>(MockBehavior.Strict);
+
+        categories
+            .Setup(repo => repo.GetByIdAsync(1))
+            .ReturnsAsync(new Category
+            {
+                Id = 1,
+                Name = "Молочные продукты"
+            });
+
+        products
+            .Setup(repo => repo.CountAsync(1))
+            .ReturnsAsync(totalCount);
+
+        products
+            .Setup(repo => repo.GetPageAsync(
+                1,
+                "price_desc",
+                expectedPage,
+                10))
+            .ReturnsAsync(Array.Empty<Product>());
+
+        var service = new ProductService(
+            products.Object,
+            categories.Object);
+
+        var result = await service.GetListAsync(
+            categoryId: 1,
+            sort: "price_desc",
+            page: requestedPage);
+
+        Assert.NotNull(result);
+        Assert.Equal(totalCount, result.TotalCount);
+        Assert.Equal(expectedPage, result.Page);
+        Assert.Equal(expectedTotalPages, result.TotalPages);
+        Assert.Equal(1, result.CategoryId);
+        Assert.Equal("price_desc", result.Sort);
+
+        products.Verify(
+            repo => repo.GetPageAsync(1, "price_desc", expectedPage, 10),
+            Times.Once);
+    }
+    
+    [Theory]
+    [InlineData("id_asc", "id_asc")]
+    [InlineData("id_desc", "id_desc")]
+    [InlineData("name_asc", "name_asc")]
+    [InlineData("name_desc", "name_desc")]
+    [InlineData("price_asc", "price_asc")]
+    [InlineData("price_desc", "price_desc")]
+    [InlineData("unknown", "id_asc")]
+    public async Task GetListAsync_NormalizesSort(
+        string requestedSort,
+        string expectedSort)
+    {
+        var products = new Mock<IProductRepository>(MockBehavior.Strict);
+        var categories = new Mock<ICategoryRepository>(MockBehavior.Strict);
+
+        products
+            .Setup(repo => repo.CountAsync(null))
+            .ReturnsAsync(0);
+
+        products
+            .Setup(repo => repo.GetPageAsync(null, expectedSort, 1, 10))
+            .ReturnsAsync(Array.Empty<Product>());
+
+        var service = new ProductService(
+            products.Object,
+            categories.Object);
+
+        var result = await service.GetListAsync(
+            categoryId: null,
+            sort: requestedSort);
+
+        Assert.NotNull(result);
+        Assert.Equal(expectedSort, result.Sort);
+
+        products.Verify(
+            repo => repo.GetPageAsync(null, expectedSort, 1, 10),
+            Times.Once);
+
+        categories.Verify(
+            repo => repo.GetByIdAsync(It.IsAny<int>()),
+            Times.Never);
+    }
+    
+    [Fact]
+    public async Task GetListAsync_WhenCategoryIsMissing_ReturnsNull()
+    {
+        var products = new Mock<IProductRepository>(MockBehavior.Strict);
+        var categories = new Mock<ICategoryRepository>(MockBehavior.Strict);
+
+        categories
+            .Setup(repo => repo.GetByIdAsync(999))
+            .ReturnsAsync((Category?)null);
+
+        var service = new ProductService(
+            products.Object,
+            categories.Object);
+
+        var result = await service.GetListAsync(categoryId: 999);
+
+        Assert.Null(result);
+
+        products.Verify(
+            repo => repo.CountAsync(It.IsAny<int?>()),
+            Times.Never);
+
+        products.Verify(
+            repo => repo.GetPageAsync(
+                It.IsAny<int?>(),
+                It.IsAny<string>(),
+                It.IsAny<int>(),
+                It.IsAny<int>()),
+            Times.Never);
+    }
+    
     private static ProductInput CreateValidInput()
     {
         return new ProductInput
