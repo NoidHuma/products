@@ -13,6 +13,11 @@ COPY . .
 WORKDIR "/src/Products.Web"
 RUN dotnet build "./Products.Web.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
+FROM build AS migrations
+WORKDIR /src
+RUN dotnet tool restore
+ENTRYPOINT ["dotnet", "ef", "database", "update", "--project", "Products.Web", "--startup-project", "Products.Web", "--configuration", "Release"]
+
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "./Products.Web.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
