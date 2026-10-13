@@ -13,6 +13,13 @@
     </div>
 }
 
+@if (TempData["ErrorMessage"] is string errorMessage)
+{
+    <div class="alert alert-danger" role="alert">
+        @errorMessage
+    </div>
+}
+
 <p>
     <a asp-action="Create" class="btn btn-primary">Добавить категорию</a>
 </p>
@@ -42,6 +49,11 @@ else
                        asp-route-id="@category.Id"
                        class="btn btn-outline-primary btn-sm">
                         Переименовать
+                    </a>
+                    <a asp-action="Delete"
+                       asp-route-id="@category.Id"
+                       class="btn btn-outline-danger btn-sm">
+                        Удалить
                     </a>
                 </td>
             </tr>

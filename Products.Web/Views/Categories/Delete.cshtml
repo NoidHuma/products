@@ -1,0 +1,17 @@
+﻿@model Products.Web.Models.Category
+
+@{
+    ViewData["Title"] = "Удаление категории";
+}
+
+<h1>Удаление категории</h1>
+
+<p>
+    Вы действительно хотите удалить категорию
+    <strong>@Model.Name</strong>?
+</p>
+
+<form asp-action="Delete" asp-route-id="@Model.Id" method="post">
+    <button type="submit" class="btn btn-danger">Удалить</button>
+    <a asp-action="Index" class="btn btn-secondary">Отмена</a>
+</form>
