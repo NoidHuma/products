@@ -1,0 +1,32 @@
+﻿@model Products.Web.Models.Product
+
+@{
+    ViewData["Title"] = "Информация о продукте";
+}
+
+<h1>@Model.Name</h1>
+
+<dl class="row">
+    <dt class="col-sm-3">Описание</dt>
+    <dd class="col-sm-9">
+        @if (string.IsNullOrWhiteSpace(Model.Description))
+        {
+            <span class="text-muted">Описание не указано.</span>
+        }
+        else
+        {
+            <div class="product-description">@Model.Description</div>
+        }
+    </dd>
+
+    <dt class="col-sm-3">Цена</dt>
+    <dd class="col-sm-9">@Model.Price.ToString("0.00")</dd>
+
+    <dt class="col-sm-3">Количество</dt>
+    <dd class="col-sm-9">@Model.Quantity</dd>
+
+    <dt class="col-sm-3">Категория</dt>
+    <dd class="col-sm-9">@Model.Category.Name</dd>
+</dl>
+
+<a asp-action="Index" class="btn btn-secondary">Вернуться к списку</a>
