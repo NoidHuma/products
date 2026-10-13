@@ -13,7 +13,7 @@ public class ProductListViewModel
 
     public int? CategoryId { get; set; }
 
-    public string Sort { get; set; } = "name_asc";
+    public string Sort { get; set; } = "id_asc";
 
     public int Page { get; set; }
 
