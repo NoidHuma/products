@@ -18,8 +18,7 @@ public class ProductsController : Controller
         var products = await _context.Products
             .AsNoTracking()
             .Include(product => product.Category)
-            .OrderBy(product => product.Name)
-            .ThenBy(product => product.Id)
+            .OrderBy(product => product.Id)
             .ToListAsync();
 
         return View(products);
