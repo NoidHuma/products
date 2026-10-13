@@ -1,31 +1,26 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Products.Web.Data;
-using Products.Web.Models;
+using Products.Web.Services;
 using Products.Web.ViewModels;
-using Npgsql;
 
 namespace Products.Web.Controllers;
 
 public class CategoriesController : Controller
 {
-    private readonly AppDbContext _context;
+    private readonly ICategoryService _service;
 
-    public CategoriesController(AppDbContext context)
+    public CategoriesController(ICategoryService service)
     {
-        _context = context;
+        _service = service;
     }
 
+    [HttpGet]
     public async Task<IActionResult> Index()
     {
-        var categories = await _context.Categories
-            .AsNoTracking()
-            .OrderBy(category => category.Id)
-            .ToListAsync();
+        var categories = await _service.GetAllAsync();
 
         return View(categories);
     }
-    
+
     [HttpGet]
     public IActionResult Create()
     {
@@ -41,23 +36,30 @@ public class CategoriesController : Controller
             return View(model);
         }
 
-        var category = new Category
+        var result = await _service.CreateAsync(model.Name);
+
+        switch (result)
         {
-            Name = model.Name.Trim()
-        };
+            case CategoryOperationResult.Success:
+                TempData["SuccessMessage"] = "Категория добавлена.";
+                return RedirectToAction(nameof(Index));
 
-        _context.Categories.Add(category);
-        await _context.SaveChangesAsync();
+            case CategoryOperationResult.InvalidName:
+                ModelState.AddModelError(
+                    nameof(model.Name),
+                    "Введите название категории.");
+                return View(model);
 
-        TempData["SuccessMessage"] = "Категория добавлена.";
-
-        return RedirectToAction(nameof(Index));
+            default:
+                throw new InvalidOperationException(
+                    "Неожиданный результат создания категории.");
+        }
     }
-    
+
     [HttpGet]
     public async Task<IActionResult> Edit(int id)
     {
-        var category = await _context.Categories.FindAsync(id);
+        var category = await _service.GetByIdAsync(id);
 
         if (category is null)
         {
@@ -78,49 +80,43 @@ public class CategoriesController : Controller
         int id,
         CategoryFormViewModel model)
     {
-        var category = await _context.Categories.FindAsync(id);
-
-        if (category is null)
-        {
-            return NotFound();
-        }
-
         if (!ModelState.IsValid)
         {
-            return View(model);
-        }
-
-        category.Name = model.Name.Trim();
-
-        try
-        {
-            await _context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            var categoryExists = await _context.Categories
-                .AsNoTracking()
-                .AnyAsync(category => category.Id == id);
-
-            if (!categoryExists)
+            if (await _service.GetByIdAsync(id) is null)
             {
                 return NotFound();
             }
 
-            throw;
+            return View(model);
         }
 
-        TempData["SuccessMessage"] = "Название категории изменено.";
+        var result = await _service.RenameAsync(id, model.Name);
 
-        return RedirectToAction(nameof(Index));
+        switch (result)
+        {
+            case CategoryOperationResult.Success:
+                TempData["SuccessMessage"] = "Название категории изменено.";
+                return RedirectToAction(nameof(Index));
+
+            case CategoryOperationResult.NotFound:
+                return NotFound();
+
+            case CategoryOperationResult.InvalidName:
+                ModelState.AddModelError(
+                    nameof(model.Name),
+                    "Введите название категории.");
+                return View(model);
+
+            default:
+                throw new InvalidOperationException(
+                    "Неожиданный результат переименования категории.");
+        }
     }
-    
+
     [HttpGet]
     public async Task<IActionResult> Delete(int id)
     {
-        var category = await _context.Categories
-            .AsNoTracking()
-            .FirstOrDefaultAsync(category => category.Id == id);
+        var category = await _service.GetByIdAsync(id);
 
         if (category is null)
         {
@@ -135,56 +131,25 @@ public class CategoriesController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteConfirmed(int id)
     {
-        var category = await _context.Categories.FindAsync(id);
+        var result = await _service.DeleteAsync(id);
 
-        if (category is null)
+        switch (result)
         {
-            return NotFound();
-        }
+            case CategoryOperationResult.Success:
+                TempData["SuccessMessage"] = "Категория удалена.";
+                return RedirectToAction(nameof(Index));
 
-        var hasProducts = await _context.Products
-            .AnyAsync(product => product.CategoryId == id);
-
-        if (hasProducts)
-        {
-            TempData["ErrorMessage"] =
-                "Нельзя удалить категорию: в ней есть продукты.";
-
-            return RedirectToAction(nameof(Index));
-        }
-
-        _context.Categories.Remove(category);
-
-        try
-        {
-            await _context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            var categoryExists = await _context.Categories
-                .AsNoTracking()
-                .AnyAsync(category => category.Id == id);
-
-            if (!categoryExists)
-            {
+            case CategoryOperationResult.NotFound:
                 return NotFound();
-            }
 
-            throw;
+            case CategoryOperationResult.HasProducts:
+                TempData["ErrorMessage"] =
+                    "Нельзя удалить категорию: в ней есть продукты.";
+                return RedirectToAction(nameof(Index));
+
+            default:
+                throw new InvalidOperationException(
+                    "Неожиданный результат удаления категории.");
         }
-        catch (DbUpdateException exception)
-            when (exception.InnerException is PostgresException postgresException
-                  && postgresException.SqlState == PostgresErrorCodes.ForeignKeyViolation
-                  && postgresException.ConstraintName == "FK_Products_Categories_CategoryId")
-        {
-            TempData["ErrorMessage"] =
-                "Нельзя удалить категорию: в ней есть продукты.";
-
-            return RedirectToAction(nameof(Index));
-        }
-
-        TempData["SuccessMessage"] = "Категория удалена.";
-
-        return RedirectToAction(nameof(Index));
     }
 }
