@@ -16,6 +16,11 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 var app = builder.Build();
 
+app.UseRequestLocalization(new RequestLocalizationOptions()
+    .SetDefaultCulture("ru-RU")
+    .AddSupportedCultures("ru-RU")
+    .AddSupportedUICultures("ru-RU"));
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
