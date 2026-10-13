@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Products.Web.Data;
+using Products.Web.Models;
+using Products.Web.ViewModels;
 
 namespace Products.Web.Controllers;
 
@@ -21,5 +23,33 @@ public class CategoriesController : Controller
             .ToListAsync();
 
         return View(categories);
+    }
+    
+    [HttpGet]
+    public IActionResult Create()
+    {
+        return View(new CategoryFormViewModel());
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create(CategoryFormViewModel model)
+    {
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        var category = new Category
+        {
+            Name = model.Name.Trim()
+        };
+
+        _context.Categories.Add(category);
+        await _context.SaveChangesAsync();
+
+        TempData["SuccessMessage"] = "Категория добавлена.";
+
+        return RedirectToAction(nameof(Index));
     }
 }
