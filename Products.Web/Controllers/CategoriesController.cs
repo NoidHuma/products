@@ -52,4 +52,49 @@ public class CategoriesController : Controller
 
         return RedirectToAction(nameof(Index));
     }
+    
+    [HttpGet]
+    public async Task<IActionResult> Edit(int id)
+    {
+        var category = await _context.Categories.FindAsync(id);
+
+        if (category is null)
+        {
+            return NotFound();
+        }
+
+        var model = new CategoryFormViewModel
+        {
+            Name = category.Name
+        };
+
+        return View(model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(
+        int id,
+        CategoryFormViewModel model)
+    {
+        var category = await _context.Categories.FindAsync(id);
+
+        if (category is null)
+        {
+            return NotFound();
+        }
+
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        category.Name = model.Name.Trim();
+
+        await _context.SaveChangesAsync();
+
+        TempData["SuccessMessage"] = "Название категории изменено.";
+
+        return RedirectToAction(nameof(Index));
+    }
 }
