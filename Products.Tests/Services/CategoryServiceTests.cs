@@ -2,7 +2,6 @@
 using Products.Web.Models;
 using Products.Web.Repositories;
 using Products.Web.Services;
-using Xunit;
 
 namespace Products.Tests.Services;
 
