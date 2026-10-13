@@ -1,0 +1,28 @@
+﻿@model Products.Web.Models.Product
+
+@{
+    ViewData["Title"] = "Удаление продукта";
+}
+
+<h1>Удаление продукта</h1>
+
+<p>
+    Вы действительно хотите удалить продукт
+    <strong>@Model.Name</strong>?
+</p>
+
+<dl class="row">
+    <dt class="col-sm-3">Цена</dt>
+    <dd class="col-sm-9">@Model.Price.ToString("0.00")</dd>
+
+    <dt class="col-sm-3">Количество</dt>
+    <dd class="col-sm-9">@Model.Quantity</dd>
+
+    <dt class="col-sm-3">Категория</dt>
+    <dd class="col-sm-9">@Model.Category.Name</dd>
+</dl>
+
+<form asp-action="Delete" asp-route-id="@Model.Id" method="post">
+    <button type="submit" class="btn btn-danger">Удалить</button>
+    <a asp-action="Index" class="btn btn-secondary">Отмена</a>
+</form>

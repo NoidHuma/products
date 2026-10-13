@@ -129,103 +129,156 @@ public class ProductsController : Controller
     }
     
     [HttpGet]
-public async Task<IActionResult> Edit(int id)
-{
-    var product = await _context.Products
-        .AsNoTracking()
-        .FirstOrDefaultAsync(product => product.Id == id);
-
-    if (product is null)
+    public async Task<IActionResult> Edit(int id)
     {
-        return NotFound();
-    }
-
-    var model = new ProductFormViewModel
-    {
-        Name = product.Name,
-        Description = product.Description,
-        Price = product.Price,
-        Quantity = product.Quantity,
-        CategoryId = product.CategoryId
-    };
-
-    await LoadCategoriesAsync(model);
-
-    return View(model);
-}
-
-[HttpPost]
-[ValidateAntiForgeryToken]
-public async Task<IActionResult> Edit(
-    int id,
-    ProductFormViewModel model)
-{
-    var product = await _context.Products.FindAsync(id);
-
-    if (product is null)
-    {
-        return NotFound();
-    }
-
-    if (model.CategoryId.HasValue)
-    {
-        var categoryExists = await _context.Categories
-            .AnyAsync(category => category.Id == model.CategoryId.Value);
-
-        if (!categoryExists)
-        {
-            ModelState.AddModelError(
-                nameof(model.CategoryId),
-                "Выбранная категория не существует.");
-        }
-    }
-
-    if (!ModelState.IsValid)
-    {
-        await LoadCategoriesAsync(model);
-
-        return View(model);
-    }
-
-    product.Name = model.Name.Trim();
-    product.Description = model.Description?.Trim();
-    product.Price = model.Price!.Value;
-    product.Quantity = model.Quantity!.Value;
-    product.CategoryId = model.CategoryId!.Value;
-
-    try
-    {
-        await _context.SaveChangesAsync();
-    }
-    catch (DbUpdateConcurrencyException)
-    {
-        var productExists = await _context.Products
+        var product = await _context.Products
             .AsNoTracking()
-            .AnyAsync(product => product.Id == id);
+            .FirstOrDefaultAsync(product => product.Id == id);
 
-        if (!productExists)
+        if (product is null)
         {
             return NotFound();
         }
 
-        throw;
-    }
-    catch (DbUpdateException exception)
-        when (exception.InnerException is PostgresException postgresException
-              && postgresException.SqlState == PostgresErrorCodes.ForeignKeyViolation
-              && postgresException.ConstraintName == "FK_Products_Categories_CategoryId")
-    {
-        ModelState.AddModelError(
-            nameof(model.CategoryId),
-            "Категория была удалена. Выберите другую.");
+        var model = new ProductFormViewModel
+        {
+            Name = product.Name,
+            Description = product.Description,
+            Price = product.Price,
+            Quantity = product.Quantity,
+            CategoryId = product.CategoryId
+        };
 
         await LoadCategoriesAsync(model);
 
         return View(model);
     }
 
-    TempData["SuccessMessage"] = "Продукт изменён.";
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(
+        int id,
+        ProductFormViewModel model)
+    {
+        var product = await _context.Products.FindAsync(id);
 
-    return RedirectToAction(nameof(Index));
-}
+        if (product is null)
+        {
+            return NotFound();
+        }
+
+        if (model.CategoryId.HasValue)
+        {
+            var categoryExists = await _context.Categories
+                .AnyAsync(category => category.Id == model.CategoryId.Value);
+
+            if (!categoryExists)
+            {
+                ModelState.AddModelError(
+                    nameof(model.CategoryId),
+                    "Выбранная категория не существует.");
+            }
+        }
+
+        if (!ModelState.IsValid)
+        {
+            await LoadCategoriesAsync(model);
+
+            return View(model);
+        }
+
+        product.Name = model.Name.Trim();
+        product.Description = model.Description?.Trim();
+        product.Price = model.Price!.Value;
+        product.Quantity = model.Quantity!.Value;
+        product.CategoryId = model.CategoryId!.Value;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            var productExists = await _context.Products
+                .AsNoTracking()
+                .AnyAsync(product => product.Id == id);
+
+            if (!productExists)
+            {
+                return NotFound();
+            }
+
+            throw;
+        }
+        catch (DbUpdateException exception)
+            when (exception.InnerException is PostgresException postgresException
+                  && postgresException.SqlState == PostgresErrorCodes.ForeignKeyViolation
+                  && postgresException.ConstraintName == "FK_Products_Categories_CategoryId")
+        {
+            ModelState.AddModelError(
+                nameof(model.CategoryId),
+                "Категория была удалена. Выберите другую.");
+
+            await LoadCategoriesAsync(model);
+
+            return View(model);
+        }
+
+        TempData["SuccessMessage"] = "Продукт изменён.";
+
+        return RedirectToAction(nameof(Index));
+    }
+    
+    [HttpGet]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var product = await _context.Products
+            .AsNoTracking()
+            .Include(product => product.Category)
+            .FirstOrDefaultAsync(product => product.Id == id);
+
+        if (product is null)
+        {
+            return NotFound();
+        }
+
+        return View(product);
+    }
+
+    [HttpPost]
+    [ActionName("Delete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteConfirmed(int id)
+    {
+        var product = await _context.Products.FindAsync(id);
+
+        if (product is null)
+        {
+            return NotFound();
+        }
+
+        _context.Products.Remove(product);
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            var productExists = await _context.Products
+                .AsNoTracking()
+                .AnyAsync(product => product.Id == id);
+
+            if (!productExists)
+            {
+                return NotFound();
+            }
+
+            throw;
+        }
+
+        TempData["SuccessMessage"] = "Продукт удалён.";
+
+        return RedirectToAction(nameof(Index));
+    }
 }

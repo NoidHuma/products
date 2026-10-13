@@ -54,6 +54,11 @@ else
                        class="btn btn-outline-primary btn-sm">
                         Редактировать
                     </a>
+                    <a asp-action="Delete"
+                       asp-route-id="@product.Id"
+                       class="btn btn-outline-danger btn-sm">
+                        Удалить
+                    </a>
                 </td>
             </tr>
         }
