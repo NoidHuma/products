@@ -17,15 +17,100 @@ public class ProductsController : Controller
         _context = context;
     }
 
-    public async Task<IActionResult> Index()
+    [HttpGet]
+    public async Task<IActionResult> Index(
+        int? categoryId,
+        string sort = "id_asc",
+        int page = 1)
     {
-        var products = await _context.Products
+        const int pageSize = 10;
+
+        sort = sort switch
+        {
+            "id_desc" => "id_desc",
+            "name_asc" => "name_asc",
+            "name_desc" => "name_desc",
+            "price_asc" => "price_asc",
+            "price_desc" => "price_desc",
+            _ => "id_asc"
+        };
+
+        var categories = await _context.Categories
             .AsNoTracking()
-            .Include(product => product.Category)
-            .OrderBy(product => product.Id)
+            .OrderBy(category => category.Name)
+            .ThenBy(category => category.Id)
             .ToListAsync();
 
-        return View(products);
+        if (categoryId.HasValue
+            && !categories.Any(category => category.Id == categoryId.Value))
+        {
+            return NotFound();
+        }
+
+        var query = _context.Products.AsNoTracking();
+
+        if (categoryId.HasValue)
+        {
+            query = query.Where(product => product.CategoryId == categoryId.Value);
+        }
+
+        var totalCount = await query.CountAsync();
+
+        var totalPages = Math.Max(
+            1,
+            (int)Math.Ceiling(totalCount / (double)pageSize));
+
+        page = Math.Clamp(page, 1, totalPages);
+
+        var orderedQuery = sort switch
+        {
+            "id_desc" => query
+                .OrderByDescending(product => product.Id),
+            
+            "name_asc" => query
+                .OrderBy(product => product.Name)
+                .ThenBy(product => product.Id),
+            
+            "name_desc" => query
+                .OrderByDescending(product => product.Name)
+                .ThenBy(product => product.Id),
+
+            "price_asc" => query
+                .OrderBy(product => product.Price)
+                .ThenBy(product => product.Id),
+
+            "price_desc" => query
+                .OrderByDescending(product => product.Price)
+                .ThenBy(product => product.Id),
+
+            _ => query
+                .OrderBy(product => product.Id)
+        };
+
+        var products = await orderedQuery
+            .Include(product => product.Category)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        var model = new ProductListViewModel
+        {
+            Products = products,
+            Categories = categories
+                .Select(category => new SelectListItem
+                {
+                    Value = category.Id.ToString(),
+                    Text = category.Name
+                })
+                .ToList(),
+            CategoryId = categoryId,
+            Sort = sort,
+            Page = page,
+            TotalPages = totalPages,
+            TotalCount = totalCount
+        };
+
+        return View(model);
     }
     
     [HttpGet]

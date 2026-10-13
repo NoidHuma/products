@@ -1,4 +1,4 @@
-﻿@model IReadOnlyList<Products.Web.Models.Product>
+﻿@model Products.Web.ViewModels.ProductListViewModel
 
 @{
     ViewData["Title"] = "Продукты";
@@ -17,51 +17,109 @@
     <a asp-action="Create" class="btn btn-primary">Добавить продукт</a>
 </p>
 
-@if (Model.Count == 0)
+<form asp-action="Index" method="get" class="row g-3 mb-4">
+    <div class="col-md-5">
+        <label asp-for="CategoryId" class="form-label">Категория</label>
+        <select asp-for="CategoryId"
+                asp-items="Model.Categories"
+                class="form-select">
+            <option value="">Все категории</option>
+        </select>
+    </div>
+
+    <div class="col-md-5">
+        <label asp-for="Sort" class="form-label">Сортировка</label>
+        <select asp-for="Sort" class="form-select">
+            <option value="id_asc">ID: по возрастанию</option>
+            <option value="id_desc">ID: по убыванию</option>
+            <option value="name_asc">Название: по возрастанию</option>
+            <option value="name_desc">Название: по убыванию</option>
+            <option value="price_asc">Цена: по возрастанию</option>
+            <option value="price_desc">Цена: по убыванию</option>
+        </select>
+    </div>
+
+    <div class="col-md-2 d-flex align-items-end">
+        <button type="submit" class="btn btn-primary">Применить</button>
+    </div>
+</form>
+
+@if (Model.Products.Count == 0)
 {
-    <p>Продуктов пока нет.</p>
+    <p>Продукты не найдены.</p>
 }
 else
 {
-    <table class="table">
-        <thead>
-        <tr>
-            <th>ID</th>
-            <th>Название</th>
-            <th>Цена</th>
-            <th>Количество</th>
-            <th>Категория</th>
-            <th>Действия</th>
-        </tr>
-        </thead>
-        <tbody>
-        @foreach (var product in Model)
+    <p>Найдено продуктов: @Model.TotalCount</p>
+
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Название</th>
+                    <th>Цена</th>
+                    <th>Количество</th>
+                    <th>Категория</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var product in Model.Products)
+                {
+                    <tr>
+                        <td>@product.Id</td>
+                        <td>@product.Name</td>
+                        <td>@product.Price.ToString("0.00")</td>
+                        <td>@product.Quantity</td>
+                        <td>@product.Category.Name</td>
+                        <td>
+                            <a asp-action="Details"
+                               asp-route-id="@product.Id"
+                               class="btn btn-outline-secondary btn-sm">
+                                Подробнее
+                            </a>
+                            <a asp-action="Edit"
+                               asp-route-id="@product.Id"
+                               class="btn btn-outline-primary btn-sm">
+                                Редактировать
+                            </a>
+                            <a asp-action="Delete"
+                               asp-route-id="@product.Id"
+                               class="btn btn-outline-danger btn-sm">
+                                Удалить
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <nav aria-label="Страницы списка продуктов"
+         class="d-flex align-items-center gap-3">
+        @if (Model.Page > 1)
         {
-            <tr>
-                <td>@product.Id</td>
-                <td>@product.Name</td>
-                <td>@product.Price.ToString("0.00")</td>
-                <td>@product.Quantity</td>
-                <td>@product.Category.Name</td>
-                <td>
-                    <a asp-action="Details"
-                       asp-route-id="@product.Id"
-                       class="btn btn-outline-secondary btn-sm">
-                        Подробнее
-                    </a>
-                    <a asp-action="Edit"
-                       asp-route-id="@product.Id"
-                       class="btn btn-outline-primary btn-sm">
-                        Редактировать
-                    </a>
-                    <a asp-action="Delete"
-                       asp-route-id="@product.Id"
-                       class="btn btn-outline-danger btn-sm">
-                        Удалить
-                    </a>
-                </td>
-            </tr>
+            <a asp-action="Index"
+               asp-route-categoryId="@Model.CategoryId"
+               asp-route-sort="@Model.Sort"
+               asp-route-page="@(Model.Page - 1)"
+               class="btn btn-outline-primary">
+                Назад
+            </a>
         }
-        </tbody>
-    </table>
+
+        <span>Страница @Model.Page из @Model.TotalPages</span>
+
+        @if (Model.Page < Model.TotalPages)
+        {
+            <a asp-action="Index"
+               asp-route-categoryId="@Model.CategoryId"
+               asp-route-sort="@Model.Sort"
+               asp-route-page="@(Model.Page + 1)"
+               class="btn btn-outline-primary">
+                Вперёд
+            </a>
+        }
+    </nav>
 }
