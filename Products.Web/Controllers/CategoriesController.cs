@@ -92,7 +92,23 @@ public class CategoriesController : Controller
 
         category.Name = model.Name.Trim();
 
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            var categoryExists = await _context.Categories
+                .AsNoTracking()
+                .AnyAsync(category => category.Id == id);
+
+            if (!categoryExists)
+            {
+                return NotFound();
+            }
+
+            throw;
+        }
 
         TempData["SuccessMessage"] = "Название категории изменено.";
 
@@ -142,6 +158,19 @@ public class CategoriesController : Controller
         try
         {
             await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            var categoryExists = await _context.Categories
+                .AsNoTracking()
+                .AnyAsync(category => category.Id == id);
+
+            if (!categoryExists)
+            {
+                return NotFound();
+            }
+
+            throw;
         }
         catch (DbUpdateException exception)
             when (exception.InnerException is PostgresException postgresException
